@@ -1,4 +1,5 @@
 import os
+import rasterio
 
 def get(iv_name):
     # function to get mandatory specs for an indicator 
@@ -12,7 +13,7 @@ def get(iv_name):
     try:
         iv_sel = ivs[iv_name]
         
-        req_keys = set(['name', 'label', 'method', 'source','sum_stat', 'classes', 'relative'])
+        req_keys = set(['name', 'label', 'method', 'source','sum_stat', 'classes', 'relative_to'])
         given_keys = set([k for k, v in iv_sel.items()])
         if any([x not in req_keys for x in given_keys]):
             raise Exception('{0} is a required indicator property, but not provided for {1}'.
@@ -21,8 +22,9 @@ def get(iv_name):
         if iv_sel['method'] not in ['categorical', 'sum_stat', 'count']:
             raise Exception('{0} is is not a valid method'.format(iv_sel['method']))
         
-        if not isinstance(iv_sel['relative'], bool):
-            raise Exception('Relative should be boolean, currently is {0}'.format(iv_sel['relative']))        
+        if iv_sel['relative_to'] not in [None, 'perc', 'sq_km']:
+            raise Exception('relative_to parameter should be either None;self;sq_km, '
+                            'currently is {0}'.format(iv_sel['relative']))
         
         if iv_sel['sum_stat'] not in [None, 'mean', 'min', 'max']:
             raise Exception('sum_stat should be one of None;mean;min;max, but currently is {0}'.
@@ -30,6 +32,10 @@ def get(iv_name):
             
         if not os.path.isfile(iv_sel['source']):
             raise Exception('{0} does not seem to exist, better try again'.format(iv_sel['source']))
+
+        with rasterio.open(iv_sel['source']) as rast:
+            # here an error will occur if *source* is not a supported raster format
+            pass
 
         return iv_sel
 
