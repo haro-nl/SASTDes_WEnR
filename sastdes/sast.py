@@ -48,7 +48,8 @@ def categorical_stats(contours, source_data, cat_list, cat_map, **kwds):
 
     raw_results = rasterstats.zonal_stats(contours, source_data, categorical=True, category_map=cat_map) # pixel count of all found categories for each contour
     reduced_results = reduce_category_stats(raw_results, cat_list) # pixel count of requested categories for each contour
-    results = np.multiply(reduced_results, get_pixel_area(source_data)) # multiply pixel count with pixel size in *source_data* linear unit to get acreage
+    results_m2 = np.multiply(reduced_results, get_pixel_area(source_data)) # multiply pixel count with pixel size in *source_data* linear unit to get acreage
+    results = np.divide(results_m2, 1000000) # results in square km
 
     # Give results as percentage of total #pixels of each contour, if requested.
     if kwds.get('relative', None) == 'perc':
@@ -58,7 +59,7 @@ def categorical_stats(contours, source_data, cat_list, cat_map, **kwds):
         pass
 
     # compile new dataframe with 2 cols: {ID, IVs}
-    out = pd.DataFrame({'id': contours['ID'], 'values': results})
+    out = pd.DataFrame({'values': results}, index=contours.index)
 
     if not out.empty:
         return out
@@ -70,7 +71,7 @@ def categorical_stats(contours, source_data, cat_list, cat_map, **kwds):
 def sum_stats(contours, source_data, sum_stat):
     # returns summary statistic *sum_stat* of *source_data* for each contour in *contours*
     results = rasterstats.zonal_stats(contours, source_data, stats=sum_stat)
-    out = pd.DataFrame({'id': contours['ID'], 'values': results})
+    out = pd.DataFrame({'values': results}, index=contours.index)
     if not out.empty:
         return out
     else:
@@ -78,13 +79,22 @@ def sum_stats(contours, source_data, sum_stat):
 
 
 def count_within_contour(contours, source_data):
-    # returns count of *source_data* features in each contour in *contours*
+    # returns count of *source_data* Points in each contour in *contours*
+    # only works for gdf in same CRS
+
+    # read source data and check for geometry type
     src = gp.read_file(source_data)
-    source_data_with_contour = gp.sjoin(source_data, contours, how='inner', op='intersects')
-    source_data_with_contour['counter'] = 1
-    source_data_count = source_data_with_contour.dissolve(by='ID', aggfunc='sum')
-    out = pd.DataFrame({'ID': source_data['ID'], 'counted': source_data_count['counter']})
-    return out
+    if any(src.geom_type != 'Point'):
+        raise Exception('Source data {0} should contain Point geometry only'.format(os.path.basename(source_data)))
+
+    contours['ID'] = contours.index
+
+    src_with_contour = gp.sjoin(src, contours, how='inner', op='intersects', rsuffix='_contours',
+                                lsuffix='_source')  # spatial join
+    src_with_contour['values'] = 1  # counter attribute
+    src_dissolve = src_with_contour.dissolve(by='ID', aggfunc='sum')  # dissolve by contours ID
+    return src_dissolve.drop(labels=[lab for lab in list(src_dissolve) if lab is not 'values'],
+                      axis=1)
 
 
 def do_iv(contours, iv_name):
@@ -97,14 +107,12 @@ def do_iv(contours, iv_name):
     source_data = iv_params['source']
 
     # Double check the data types
-    if isinstance(contours, gp.geodataframe.GeoDataFrame):
+    if not isinstance(contours, gp.geodataframe.GeoDataFrame):
         raise Exception('Contours should be a GeoDataFrame, currently is: {0}'.format(type(contours)))
 
-    if 'ID' not in list(contours):
-        raise Exception('The contours gdf should have a column named ID with unique keys for the contours. '
-                        'The current column names are: ' + ', '.join([colname for colname in list(contours)]))
-
-    # TODO: check if contours and datasource CRS are identical.
+    # if 'ID' not in list(contours):
+    #     raise Exception('The contours gdf should have a column named ID with unique keys for the contours. '
+    #                     'The current column names are: ' + ', '.join([colname for colname in list(contours)]))
 
     # Run the appropriate method
     if method == 'categorical':

@@ -30,7 +30,7 @@ def get():
             'name':'Hotels_EU',
             'label':'# Hotels',
             'method':'count',
-            'source':r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\Hotels_Europe_shp\Hotels_Cleaned_EU_05_FullTable.shp',
+            'source':r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\Hotels_Europe_shp\Hotels_Cleaned_EU_05_FullTable_EPSG-3035.shp',
             'sum_stat':None,
             'classes':None,
             'relative_to':None},

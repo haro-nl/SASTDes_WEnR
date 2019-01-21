@@ -33,10 +33,6 @@ def get(iv_name):
         if not os.path.isfile(iv_sel['source']):
             raise Exception('{0} does not seem to exist, better try again'.format(iv_sel['source']))
 
-        with rasterio.open(iv_sel['source']) as rast:
-            # here an error will occur if *source* is not a supported raster format
-            pass
-
         return iv_sel
 
     except KeyError:
