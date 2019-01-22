@@ -12,16 +12,20 @@ cntrs_gdf = gp.read_file(os.path.join(cntrs_directory, cntrs_shp))
 cntrs_gdf.set_index(keys='NUTS_ID', inplace=True)
 
 # list of desired indicators. This and previous block can possibly also be read from a steerfile
-indicators = ['Htls', 'N22b', 'N22b_p']
+indicators = ['Htls_sq_km', 'Hans', 'Htls']
 
 for indicator in indicators:
-
-    indicator_val = sast.do_iv(cntrs_gdf, indicator)
-    cntrs_gdf = cntrs_gdf.join(indicator_val, how='left')
+    try:
+        indicator_val = sast.do_iv(cntrs_gdf, indicator)
+        cntrs_gdf = cntrs_gdf.join(indicator_val, how='left')
+    except Exception as e:
+        print('\t{0}'.format(e))
 
 print(cntrs_gdf.head())
+print(cntrs_gdf.loc['DE30'])
 
 # TODO: ergens wordt ID extra aangemaakt als kolom
+# TODO: poly-to-poly acreage
 # TODO: Htls werkt nog niet!.
 #       Done 21 jan 2019
 # TODO: check contour CRS == source data CRS.
@@ -33,8 +37,10 @@ print(cntrs_gdf.head())
 # TODO: append subsequent IVs to same gdf
 #       done, using join on left, but needs to be tested. Done
 # TODO: count functie ook als count/km2
+#       done, 22-01-2019
 # TODO: shape properties such as area,
 # TODO: make scripts and functions verbose; report on progress
+#       Done, 22-01-2019
 
 
 

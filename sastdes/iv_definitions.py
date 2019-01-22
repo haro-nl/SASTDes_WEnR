@@ -28,12 +28,20 @@ def get():
             'relative_to':None},
         'Htls':{
             'name':'Hotels_EU',
-            'label':'# Hotels',
-            'method':'count',
+            'label':'# Hotels in contour',
+            'method':'count_within_contour',
             'source':r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\Hotels_Europe_shp\Hotels_Cleaned_EU_05_FullTable_EPSG-3035.shp',
             'sum_stat':None,
             'classes':None,
             'relative_to':None},
+        'Htls_sq_km': {
+            'name': 'Hotels_EU',
+            'label': '# Hotels per square km',
+            'method': 'count_within_sq_km',
+            'source': r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\Hotels_Europe_shp\Hotels_Cleaned_EU_05_FullTable_EPSG-3035.shp',
+            'sum_stat': None,
+            'classes': None,
+            'relative_to': None},
         'G12mean':{
             'name':'Alt-mean',
             'label':'Mean altitude',

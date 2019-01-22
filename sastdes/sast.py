@@ -4,6 +4,7 @@ import rasterstats
 import pandas as pd
 import geopandas as gp
 import rasterio
+import datetime
 
 from sastdes import iv_specs
 from sastdes import category_maps
@@ -46,10 +47,15 @@ def categorical_stats(contours, source_data, cat_list, cat_map, **kwds):
     # Function to get total acreage of all classes in *cat_list*  from *source_data* for each contour in *contours*
     # output is either presented in <linear unit *source_data*>^2 or as percentage of total contour area
 
-    raw_results = rasterstats.zonal_stats(contours, source_data, categorical=True, category_map=cat_map) # pixel count of all found categories for each contour
-    reduced_results = reduce_category_stats(raw_results, cat_list) # pixel count of requested categories for each contour
-    results_m2 = np.multiply(reduced_results, get_pixel_area(source_data)) # multiply pixel count with pixel size in *source_data* linear unit to get acreage
-    results = np.divide(results_m2, 1000000) # results in square km
+    # pixel count of all found categories for each contour
+    raw_results = rasterstats.zonal_stats(contours, source_data, categorical=True, category_map=cat_map)
+
+    # pixel count of requested categories for each contour
+    reduced_results = reduce_category_stats(raw_results, cat_list)
+
+    # multiply pixel count with pixel size in *source_data* linear unit to get acreage. Assumes meter as linear unit
+    results_m2 = np.multiply(reduced_results, get_pixel_area(source_data))
+    results = np.divide(results_m2, 1000000)  # results in square km
 
     # Give results as percentage of total #pixels of each contour, if requested.
     if kwds.get('relative', None) == 'perc':
@@ -93,13 +99,101 @@ def count_within_contour(contours, source_data):
                                 lsuffix='_source')  # spatial join
     src_with_contour['values'] = 1  # counter attribute
     src_dissolve = src_with_contour.dissolve(by='ID', aggfunc='sum')  # dissolve by contours ID
-    return src_dissolve.drop(labels=[lab for lab in list(src_dissolve) if lab is not 'values'],
-                      axis=1)
+
+    if not src_dissolve.empty:
+        return src_dissolve.drop(labels=[lab for lab in list(src_dissolve) if lab is not 'values'],
+                                 axis=1)
+    else:
+        raise Exception('Empty geodataframe for {0} in {1}'.format(os.path.basename(source_data), contours))
+
+
+def count_within_sq_km(contours, source_data):
+    # returns count of *source_data* points per square km for each contour in *contours*
+    # requires identical and projected CRS in meters for both *contours* and *source_data*
+    # Hans Roelofsen, WEnR, 22 january 2019
+
+    # TODO: probably possible to call count_within_contour function, instead of replicating code
+
+    # read source data and check for geometry type
+    src = gp.read_file(source_data)
+    if any(src.geom_type != 'Point'):
+        raise Exception('Source data {0} should contain Point geometry only'.format(os.path.basename(source_data)))
+
+    # tidy up *contours* data
+    contours['ID'] = contours.index
+    contours['area_sq_km'] = np.divide(contours.area, 1000000)
+    contours.drop([lab for lab in list(contours) if lab not in ['geometry', 'ID', 'area_sq_km']], inplace=True, axis=1)
+
+    # associate each point in *source_data* with the ID of *contours* it intersects with
+    src_with_contour_id = gp.sjoin(src, contours, how='inner', op='intersects', rsuffix='_contours',
+                                   lsuffix='_source')
+    # add counter colomn and drop redundant columns
+    src_with_contour_id['counter'] = 1
+    src_with_contour_id.drop([lab for lab in list(src_with_contour_id) if lab not in ['counter', 'geometry', 'ID']],
+                             inplace=True, axis=1)
+
+    # dissolve by ID of the *contours* feature
+    src_dissolve = src_with_contour_id.dissolve(by='ID', aggfunc='sum')
+
+    # new DF with all contours + count per contour
+    contour_with_count = pd.merge(contours, src_dissolve, how='left', left_index=True, right_index=True)
+
+    # calculate features from *source_data* per sq km for each feature in *contours*
+    contour_with_count['values'] = np.divide(contour_with_count['counter'], contour_with_count['area_sq_km'])
+
+    if not contour_with_count.empty:
+        return contour_with_count.drop([lab for lab in list(contour_with_count) if lab is not 'values'], axis=1)
+    else:
+        raise Exception('Empty geodataframe for {0} in {1}'.format(os.path.basename(source_data), contours))
+
+
+def intersect(contours, source_data, relative_to):
+    # function calculate %count, %area_sq_km, or $area_perc of *source_data* features for each *contours* feature
+
+    # add column to contours equalling the index, used later for removing features
+    contours['contourID'] = contours.index
+
+    # read source data
+    src = gp.read_file(source_data)
+    if any(src.geom_type != 'Polygon'):
+        raise Exception('Source data {0} should contain Polygon geometry only'.format(os.path.basename(source_data)))
+
+    # TODO: determine src primary key! Cannot be ID
+    src['src_area_sq_km'] = np.divide(src.area, 1000000)
+    src['sourceID'] = src[XXX]
+
+    # Overlay two datasets and add counter attribute
+    union = gp.overlay(contours, src, how='union')
+    union['counter'] = 1
+
+    # retain only features with values for both *contours* AND *source_data* primary keys.
+    # Ie, remove features without any overlap
+    union.dropna(axis=0, how='any', subset=['sourceID', 'contourID'], inplace=True)
+
+    # dissolve on contour ID
+    count_per_contour = union.dissolve(by='contourID', aggfunc='sum')
+
+    # return requested information
+    if relative_to == 'count_per_contour':
+        return count_per_contour['counter']
+
+    if relative_to == 'sq_km_per_contour':
+        return count_per_contour['src_area_sq_km']
+
+    if relative_to == 'percentage_per_contour':
+        # TODO: contour square km nog bepalen!
+        return np.multiply(np.divide(count_per_contour['src_area_sq_km'], count_per_contour['contour_sq_km']), 100)
+
+    else:
+        raise Exception('Invalid type provided for intersect method: {0}, should be one of count_per_contour, sq_km_per_contour or percentage_per_contour'.format(type))
 
 
 def do_iv(contours, iv_name):
     # calculate values for indicator*iv_name* for each contour in *contours*
     # returns pandas dataframe with 2 cols: {ID:contours[ID];iv_name:values}
+
+    # report on progress
+    print('Commecing indicator {0} at {1}'.format(iv_name, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
     # Recover the processeing specifications for the requested IV
     iv_params = iv_specs.get(iv_name)
@@ -109,10 +203,6 @@ def do_iv(contours, iv_name):
     # Double check the data types
     if not isinstance(contours, gp.geodataframe.GeoDataFrame):
         raise Exception('Contours should be a GeoDataFrame, currently is: {0}'.format(type(contours)))
-
-    # if 'ID' not in list(contours):
-    #     raise Exception('The contours gdf should have a column named ID with unique keys for the contours. '
-    #                     'The current column names are: ' + ', '.join([colname for colname in list(contours)]))
 
     # Run the appropriate method
     if method == 'categorical':
@@ -128,8 +218,13 @@ def do_iv(contours, iv_name):
                             source_data=source_data,
                             sum_stat=stat)
 
-    elif method == 'count':
-        iv_vals = count_within_contour(contours, source_data)
+    elif method == 'count_within_contour':
+        iv_vals = count_within_contour(contours=contours,
+                                       source_data=source_data)
+
+    elif method == 'count_within_sq_km':
+        iv_vals = count_within_sq_km(contours=contours,
+                                     source_data=source_data)
 
     # je moet wat....
     else:
@@ -137,6 +232,10 @@ def do_iv(contours, iv_name):
 
     # rename the values column to the name of the indicator
     iv_vals.rename(columns={'values': iv_name}, inplace=True)
+
+    # report on progress
+    print('\tdone at {0}'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
     return iv_vals
 
 
