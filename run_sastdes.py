@@ -12,7 +12,8 @@ cntrs_gdf = gp.read_file(os.path.join(cntrs_directory, cntrs_shp))
 cntrs_gdf.set_index(keys='NUTS_ID', inplace=True)
 
 # list of desired indicators. This and previous block can possibly also be read from a steerfile
-indicators = ['Htls_sq_km', 'Hans', 'Htls']
+# indicators = ['Htls_sq_km', 'Hans', 'Htls', 'G12a', 'G12b', 'N22b', 'N40', 'N22b_p', 'E7b_a', 'E7b_b', 'E7b_c']
+indicators = ['E7b_a', 'E7b_b', 'E7b_c']
 
 for indicator in indicators:
     try:
@@ -26,6 +27,7 @@ print(cntrs_gdf.loc['DE30'])
 
 # TODO: ergens wordt ID extra aangemaakt als kolom
 # TODO: poly-to-poly acreage
+#       Nearly done 22 jan 2019
 # TODO: Htls werkt nog niet!.
 #       Done 21 jan 2019
 # TODO: check contour CRS == source data CRS.

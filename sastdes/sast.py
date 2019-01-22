@@ -158,9 +158,9 @@ def intersect(contours, source_data, relative_to):
     if any(src.geom_type != 'Polygon'):
         raise Exception('Source data {0} should contain Polygon geometry only'.format(os.path.basename(source_data)))
 
-    # TODO: determine src primary key! Cannot be ID
+    # for source data, calc area in sq km and add artificial column ID containing just the index
     src['src_area_sq_km'] = np.divide(src.area, 1000000)
-    src['sourceID'] = src[XXX]
+    src['sourceID'] = src.index
 
     # Overlay two datasets and add counter attribute
     union = gp.overlay(contours, src, how='union')
@@ -173,16 +173,30 @@ def intersect(contours, source_data, relative_to):
     # dissolve on contour ID
     count_per_contour = union.dissolve(by='contourID', aggfunc='sum')
 
+    # TODO: wordt src_area_sq_km ook gesommeerd hier!?
+
+    # reattach to original countours dataset. Drop geometry from count_per_contour to prevent geometry duplication
+    contours_with_count = pd.merge(left=contours, right=count_per_contour.drop('geometry', axis=1),
+                                   how='left', left_index=True, right_index=True)
+
     # return requested information
     if relative_to == 'count_per_contour':
-        return count_per_contour['counter']
+        out = contours_with_count.drop([lab for lab in list(contours_with_count) if lab is not 'counter'],
+                                       axis=1)
+        return out.rename(columns={'counter': 'values'})
 
     if relative_to == 'sq_km_per_contour':
-        return count_per_contour['src_area_sq_km']
+        out = contours_with_count.drop([lab for lab in list(contours_with_count) if lab is not 'src_area_sq_km'],
+                                       axis=1)
+        return out.rename(columns={'src_area_sq_km': 'values'})
 
     if relative_to == 'percentage_per_contour':
-        # TODO: contour square km nog bepalen!
-        return np.multiply(np.divide(count_per_contour['src_area_sq_km'], count_per_contour['contour_sq_km']), 100)
+        contours_with_count['contour_area_sq_km'] = np.divide(contours_with_count.area, 1000000)
+        contours_with_count['perc_per_contour'] = np.multiply(np.divide(contours_with_count['src_area_sq_km'],
+                                                                       contours_with_count['contour_area_sq_km']), 100)
+        out = contours_with_count.drop([lab for lab in list(contours_with_count) if lab is not 'perc_per_contour'],
+                                       axis=1)
+        return out.rename(columns={'perc_per_contour': 'values'})
 
     else:
         raise Exception('Invalid type provided for intersect method: {0}, should be one of count_per_contour, sq_km_per_contour or percentage_per_contour'.format(type))
@@ -225,6 +239,12 @@ def do_iv(contours, iv_name):
     elif method == 'count_within_sq_km':
         iv_vals = count_within_sq_km(contours=contours,
                                      source_data=source_data)
+
+    elif method == 'intersect':
+        relative = iv_params['relative_to']
+        iv_vals = intersect(contours=contours,
+                            source_data=source_data,
+                            relative_to=relative)
 
     # je moet wat....
     else:
