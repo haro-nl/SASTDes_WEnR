@@ -10,10 +10,11 @@ cntrs_directory = r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\EU_NUTS\shp'
 cntrs_shp = 'NUTS_Level2.shp'
 cntrs_gdf = gp.read_file(os.path.join(cntrs_directory, cntrs_shp))
 cntrs_gdf.set_index(keys='NUTS_ID', inplace=True)
+cntrs_gdf = cntrs_gdf.sample(20)
 
 # list of desired indicators. This and previous block can possibly also be read from a steerfile
-# indicators = ['Htls_sq_km', 'Hans', 'Htls', 'G12a', 'G12b', 'N22b', 'N40', 'N22b_p', 'E7b_a', 'E7b_b', 'E7b_c']
-indicators = ['E7b_a', 'E7b_b', 'E7b_c']
+indicators = ['Htls_sq_km', 'Hans', 'Htls', 'G12a', 'G12b', 'N22b', 'N40', 'N22b_p', 'E7b_a', 'E7b_b', 'E7b_c']
+# indicators = ['E7b_a', 'E7b_b', 'E7b_c']
 
 for indicator in indicators:
     try:
@@ -22,12 +23,17 @@ for indicator in indicators:
     except Exception as e:
         print('\t{0}'.format(e))
 
-print(cntrs_gdf.head())
-print(cntrs_gdf.loc['DE30'])
+print(cntrs_gdf.drop('geometry', axis=1))
+# print(cntrs_gdf.loc['DE30'])
+cntrs_gdf.drop('geometry', axis=1).to_clipboard(sep=';')
 
+# TODO: line intersection length per contour!
 # TODO: ergens wordt ID extra aangemaakt als kolom
+#       somehow, somewhere, this behaviour dissapeared
+# TODO: df padded with NA when no IV available
+#       only an issue when copying to clipboard
 # TODO: poly-to-poly acreage
-#       Nearly done 22 jan 2019
+#       Done 23 jan 2019
 # TODO: Htls werkt nog niet!.
 #       Done 21 jan 2019
 # TODO: check contour CRS == source data CRS.
