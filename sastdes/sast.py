@@ -89,9 +89,13 @@ def do_iv(contours, iv_name):
                                         source_data=source_data,
                                         relative_to=relative)
 
+    elif iv_method == 'line_length':
+        iv_vals = sast_method.line_length(contours=contours,
+                                          source_data=source_data)
+
     # je moet wat....
     else:
-        iv_vals = [0] * contours.shape[0]
+        raise Exception('Requested method {0} is not a valid method.'.format(iv_method))
 
     # rename the values column to the name of the indicator
     iv_vals.rename(columns={'values': iv_name}, inplace=True)

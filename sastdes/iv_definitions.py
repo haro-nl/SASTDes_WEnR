@@ -42,14 +42,6 @@ def get():
             'sum_stat': None,
             'classes': None,
             'relative_to': None},
-        'G12mean': {
-            'name': 'Alt-mean',
-            'label': 'Mean altitude',
-            'method': 'sum_stat',
-            'source': r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\EU_DEM\EU_DEM_100m.tif',
-            'sum_stat': 'mean',
-            'classes': None,
-            'relative_to': None},
         'N37': {
             'name': 'Bare_rock',
             'label': 'Area of bare rocks',
@@ -60,7 +52,7 @@ def get():
             'relative_to' :None},
         'G12a': {
             'name': 'Max altitude',
-            'label': 'Max altitude above mean sea level',
+            'label': 'Maximum altitude',
             'method': 'sum_stat',
             'source': r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\EU_DEM\EU_DEM_100m.tif',
             'sum_stat': 'max',
@@ -98,5 +90,12 @@ def get():
             'sum_stat': None,
             'classes': None,
             'relative_to': 'sq_km_per_contour'},
-
+        'N6b': {
+            'name': 'Shoreline length',
+            'label': 'Shoreline lenght',
+            'method': 'line_length',
+            'source': r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\natural_earth_coastlines\ne_10m_coastline_epsg3035_clip.shp',
+            'sum_stat': None,
+            'classes': None,
+            'relative_to': None}
     }

@@ -19,7 +19,8 @@ def get(iv_name):
             raise Exception('{0} is a required indicator property, but not provided for {1}'.
                             format(req_keys - given_keys, iv_name))
         
-        if iv_sel['method'] not in ['categorical', 'sum_stat', 'count_within_contour', 'count_within_sq_km', 'intersect']:
+        if iv_sel['method'] not in ['categorical', 'sum_stat', 'count_within_contour', 'count_within_sq_km',
+                                    'intersect', 'line_length']:
             raise Exception('{0} is is not a valid method'.format(iv_sel['method']))
         
         if iv_sel['relative_to'] not in [None, 'perc', 'sq_km', 'sq_km_per_contour', 'count_per_contour',

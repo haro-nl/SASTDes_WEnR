@@ -126,7 +126,7 @@ def count_within_sq_km(contours, source_data):
 
 
 def intersect(contours, source_data, relative_to):
-    # function calculate %count, %area_sq_km, or $area_perc of *source_data* features for each *contours* feature
+    # calculate count, area_sq_km, or area_perc of *source_data* features intersecting with each *contours* feature
 
     # add column to contours equalling the index, used later for removing features
     contours['contourID'] = contours.index
@@ -138,17 +138,14 @@ def intersect(contours, source_data, relative_to):
     src['sourceID'] = src.index
 
     # Overlay two datasets and add counter attribute
-    union = gp.overlay(contours, src, how='union')
-
-    # retain only features with values for both *contours* AND *source_data* primary keys, ie features w/o any overlap
-    union.dropna(axis=0, how='any', subset=['sourceID', 'contourID'], inplace=True)
+    intersect = gp.overlay(contours, src, how='intersection')
 
     # calculate area of remaining features, add counter attribute
-    union['src_area_sq_km'] = np.divide(union.area, 1000000)
-    union['counter'] = 1
+    intersect['src_area_sq_km'] = np.divide(intersect.area, 1000000)
+    intersect['counter'] = 1
 
     # dissolve on contourID to get agg_stats per contour ID
-    count_per_contour = union.dissolve(by='contourID', aggfunc='sum')
+    count_per_contour = intersect.dissolve(by='contourID', aggfunc='sum')
 
     # reattach to original countours dataset. Drop geometry from count_per_contour to prevent geometry duplication
     contours_with_count = pd.merge(left=contours, right=count_per_contour.drop('geometry', axis=1),
@@ -175,3 +172,41 @@ def intersect(contours, source_data, relative_to):
 
     else:
         raise Exception('Invalid type provided for intersect method: {0}, should be one of count_per_contour, sq_km_per_contour or percentage_per_contour'.format(type))
+
+
+def line_length(contours, source_data):
+    # returns km of line in *source* located within 5.000 m from each feature in *contours*
+    # used for e.g. associating coastline data with contours
+
+    # add column to contours equalling the index, used later for dissolving
+    contours['contourID'] = contours.index
+
+    # read source data. Add column ID containing just the index.
+    src = gp.read_file(source_data)
+    # TODO: check if all source data are LineString or MultiLineString!
+    # if any(src.geom_type != 'LineString') or any(src.geom_type != 'MultiLineString'):
+    #     raise Exception('Source data {0} should contain Line geometry only'.format(os.path.basename(source_data)))
+    src['sourceID'] = src.index
+
+    # buffer to lines to 1 meter to generate polygons, much easier.
+    src_buff = gp.GeoDataFrame(src['sourceID'], geometry=src.buffer(1))
+
+    # buffer contours to accomodate lines near, but not intersecting the original source data
+    cntrs_buff = gp.GeoDataFrame(contours['contourID'], geometry=contours.buffer(distance=5000))
+
+    # Overlay two datasets and calculate area
+    src_intersect = gp.overlay(src_buff, cntrs_buff, how='intersection')
+    src_intersect['area_m2'] = src_intersect.area
+
+    # dissolve to contourIDs
+    src_diss = src_intersect.dissolve(by='contourID', aggfunc='sum')
+
+    # calculate approximate line length per contourID as half of the dissolved feature area (because line.buffer was 1!)
+    # Then divide by 1000 to get km instead of m
+    src_diss['values'] = np.divide(src_diss['area_m2'], 2000)
+
+    # rejoin to original contours dataframe to retain all contours.
+    contours_with_line_length = pd.merge(contours, src_diss, how='left', left_index=True, right_index=True)
+    return contours_with_line_length.drop([lab for lab in list(contours_with_line_length) if lab is not 'values'],
+                                          axis=1)
+
