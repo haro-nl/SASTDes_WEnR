@@ -40,24 +40,25 @@ cntrs_directory = r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\test_contour
 cntrs_shp = 'test_contours_HR20190128.shp'
 cntrs_gdf = gp.read_file(os.path.join(cntrs_directory, cntrs_shp))
 cntrs_gdf.set_index(keys='NUTS_NAME', inplace=True)
-
+# cntrs_gdf= cntrs_gdf.sample(4)
 
 # list of desired indicators. This and previous block can possibly also be read from a steerfile
 indicators = ['N22b', 'N22b_p', 'N40', 'Htls', 'Htls_sq_km', 'N37', 'G12a', 'G12b', 'E7b_a', 'E7b_b', 'E7b_c', 'N6b']
 
 for indicator in indicators:
 
-    indicator_val = sast.do_iv(cntrs_gdf, indicator)
-    cntrs_gdf = cntrs_gdf.join(indicator_val, how='left')
-    # except Exception as e:
-    #     print('\t{0}'.format(e))
+    try:
+        indicator_val = sast.do_iv(cntrs_gdf, indicator)
+        cntrs_gdf = cntrs_gdf.join(indicator_val, how='left')
+    except Exception as e:
+        print('\t{0}'.format(e))
 
-print(cntrs_gdf.drop('geometry', axis=1))
+print(cntrs_gdf)
 # print(cntrs_gdf.loc['DE30'])
 cntrs_gdf.drop('geometry', axis=1).to_csv(r'd:\Sast_Runs\20190128_out\sastdes.csv', sep=';')
-
+# TODO: fill na
 # TODO: Htls_sq_km geeft een raar resultaat terug!
-
+#       fixed!
 # TODO: line intersection length per contour!
 #       Done, 28 jan 2019 zei het op een lelijke hacky manier.
 # TODO: ergens wordt ID extra aangemaakt als kolom

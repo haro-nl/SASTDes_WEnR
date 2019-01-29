@@ -93,19 +93,16 @@ def do_iv(contours, iv_name):
         iv_vals = sast_method.line_length(contours=contours,
                                           source_data=source_data)
 
-    # je moet wat....
     else:
         raise Exception('Requested method {0} is not a valid method.'.format(iv_method))
-
-    # rename the values column to the name of the indicator
-    iv_vals.rename(columns={'values': iv_name}, inplace=True)
 
     # report on progress
     t1 = datetime.datetime.now()
     dt = t1 - t0
-    print('\tdone at {0}, after {1} min, {2} seconds'.format(t1.strftime("%Y-%m-%d %H:%M:%S"), str(dt).split(':')[1],
-                                                             str(dt).split(':')[2]))
+    print('\tdone at {0}, after {1} min, {2} seconds\n'.format(t1.strftime("%Y-%m-%d %H:%M:%S"), str(dt).split(':')[1],
+                                                               str(dt).split(':')[2]))
 
-    return iv_vals
+    # rename the values column to the name of the indicator
+    return iv_vals.rename(columns={'values': iv_name})
 
 

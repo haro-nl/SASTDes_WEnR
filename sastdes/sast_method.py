@@ -48,11 +48,13 @@ def categorical_stats(contours, source_data, cat_list, cat_map, **kwds):
 
 def summary_stats(contours, source_data, sum_stat):
     # returns summary statistic *sum_stat* of *source_data* for each contour in *contours*
+
     results = rasterstats.zonal_stats(contours, source_data, stats=sum_stat)
     # retrieve statistic of interest from output dictionary. Note that *sum_stat* cannot be an iterable!
     results = [result[sum_stat] for result in results]
 
     out = pd.DataFrame({'values': results}, index=contours.index)
+
     if not out.empty:
         return out
     else:
@@ -79,7 +81,7 @@ def count_within_contour(contours, source_data):
     contours_with_count = pd.merge(contours, src_dissolve, how='left', left_index=True, right_index=True)
 
     if not contours_with_count.empty:
-        return src_dissolve.drop(labels=[lab for lab in list(src_dissolve) if lab is not 'values'],
+        return contours_with_count.drop(labels=[lab for lab in list(contours_with_count) if lab is not 'values'],
                                  axis=1)
     else:
         raise Exception('Empty geodataframe for {0} in {1}'.format(os.path.basename(source_data), contours))
@@ -100,11 +102,12 @@ def count_within_sq_km(contours, source_data):
     # tidy up *contours* data
     contours['contourID'] = contours.index
     contours['area_sq_km'] = np.divide(contours.area, 1000000)
-    contours.drop([lab for lab in list(contours) if lab not in ['geometry', 'contourID', 'area_sq_km']], inplace=True, axis=1)
+    # contours.drop([lab for lab in list(contours) if lab not in ['geometry', 'contourID', 'area_sq_km']], inplace=True, axis=1)
 
     # associate each point in *source_data* with the ID of *contours* it intersects with
     src_with_contour_id = gp.sjoin(src, contours, how='inner', op='intersects', rsuffix='_contours',
                                    lsuffix='_source')
+                                   
     # add counter colomn and drop redundant columns
     src_with_contour_id['counter'] = 1
     src_with_contour_id.drop([lab for lab in list(src_with_contour_id) if lab not in ['counter', 'geometry', 'contourID']],

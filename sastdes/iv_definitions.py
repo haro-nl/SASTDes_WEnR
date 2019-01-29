@@ -60,7 +60,7 @@ def get():
             'relative_to': None},
         'G12b': {
             'name': 'Altitude',
-            'label': 'Max altitude above mean sea level',
+            'label': 'Mean altitude above mean sea level',
             'method': 'sum_stat',
             'source': r'\\wur\dfs-root\PROJECTS\sastdes\Geodata_SAStDes\EU_DEM\EU_DEM_100m.tif',
             'sum_stat': 'mean',
