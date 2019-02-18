@@ -1,6 +1,7 @@
 def get():
     # dictionary of indicator properties.
     # Hans Roelofsen, WEnR, 16/Jan/2019 16:08
+    # last update: 18 feb 2019
 
     return {'N22b':{
             'name': 'Forest_Area_EU',
