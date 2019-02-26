@@ -67,8 +67,8 @@ def count_within_contour(contours, source_data):
 
     # read source data and check for geometry type
     src = gp.read_file(source_data)
-    if any(src.geom_type != 'Point'):
-        raise Exception('Source data {0} should contain Point geometry only'.format(os.path.basename(source_data)))
+    if not set(src.geom_type).issubset({'Point', 'MultiPoint'}):
+        raise Exception('Source data {0} should contain Polygon geometry only'.format(os.path.basename(source_data)))
 
     contours['contourID'] = contours.index
 
@@ -96,13 +96,12 @@ def count_within_sq_km(contours, source_data):
 
     # read source data and check for geometry type
     src = gp.read_file(source_data)
-    if any(src.geom_type != 'Point'):
-        raise Exception('Source data {0} should contain Point geometry only'.format(os.path.basename(source_data)))
+    if not set(src.geom_type).issubset({'Point', 'MultiPoint'}):
+        raise Exception('Source data {0} should contain Polygon geometry only'.format(os.path.basename(source_data)))
 
     # tidy up *contours* data
     contours['contourID'] = contours.index
     contours['area_sq_km'] = np.divide(contours.area, 1000000)
-    # contours.drop([lab for lab in list(contours) if lab not in ['geometry', 'contourID', 'area_sq_km']], inplace=True, axis=1)
 
     # associate each point in *source_data* with the ID of *contours* it intersects with
     src_with_contour_id = gp.sjoin(src, contours, how='inner', op='intersects', rsuffix='_contours',
@@ -110,7 +109,8 @@ def count_within_sq_km(contours, source_data):
                                    
     # add counter colomn and drop redundant columns
     src_with_contour_id['counter'] = 1
-    src_with_contour_id.drop([lab for lab in list(src_with_contour_id) if lab not in ['counter', 'geometry', 'contourID']],
+    src_with_contour_id.drop([lab for lab in list(src_with_contour_id) if lab not in ['counter', 'geometry',
+                                                                                      'contourID']],
                              inplace=True, axis=1)
 
     # dissolve by ID of the *contours* feature
@@ -136,7 +136,7 @@ def intersect(contours, source_data, relative_to):
 
     # read source data. Add column ID containing just the index.
     src = gp.read_file(source_data)
-    if any(src.geom_type != 'Polygon'):
+    if not set(src.geom_type).issubset({'Polygon', 'MultiPolygon'}):
         raise Exception('Source data {0} should contain Polygon geometry only'.format(os.path.basename(source_data)))
     src['sourceID'] = src.index
 
@@ -174,7 +174,8 @@ def intersect(contours, source_data, relative_to):
         return out.rename(columns={'perc_per_contour': 'values'})
 
     else:
-        raise Exception('Invalid type provided for intersect method: {0}, should be one of count_per_contour, sq_km_per_contour or percentage_per_contour'.format(type))
+        raise Exception('Invalid type provided for intersect method: {0}, should be one of count_per_contour, '
+                        'sq_km_per_contour or percentage_per_contour'.format(type))
 
 
 def line_length(contours, source_data):
@@ -186,9 +187,8 @@ def line_length(contours, source_data):
 
     # read source data. Add column ID containing just the index.
     src = gp.read_file(source_data)
-    # TODO: check if all source data are LineString or MultiLineString!
-    # if any(src.geom_type != 'LineString') or any(src.geom_type != 'MultiLineString'):
-    #     raise Exception('Source data {0} should contain Line geometry only'.format(os.path.basename(source_data)))
+    if not set(src.geom_type).issubset({'LineString', 'MultiLineString'}):
+        raise Exception('Source data {0} should contain Line geometry only'.format(os.path.basename(source_data)))
     src['sourceID'] = src.index
 
     # buffer to lines to 1 meter to generate polygons, much easier.

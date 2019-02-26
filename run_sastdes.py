@@ -57,6 +57,9 @@ print(cntrs_gdf)
 # print(cntrs_gdf.loc['DE30'])
 cntrs_gdf.drop('geometry', axis=1).to_csv(r'd:\Sast_Runs\20190128_out\sastdes.csv', sep=';')
 # TODO: fill na
+# TODO: drop redundant columns and create neat output
+# TODO: integer results for counting methods
+# TODO: either zero or empty cells for all methods
 # TODO: Htls_sq_km geeft een raar resultaat terug!
 #       fixed!
 # TODO: line intersection length per contour!
